@@ -4,6 +4,7 @@ import ast
 import contextlib
 import io
 import traceback
+from collections.abc import Mapping
 from dataclasses import dataclass
 from types import TracebackType
 from typing import Any
@@ -28,9 +29,13 @@ class ExecutionResult:
 class CodeExecutor:
     """Exécute des scripts dans un espace de noms conservé entre les exécutions."""
 
-    def __init__(self) -> None:
-        """Initialise un espace de noms vide."""
-        self._namespace: dict[str, Any] = {"__name__": "__main__"}
+    def __init__(self, context: Mapping[str, Any] | None = None) -> None:
+        """Initialise l'espace de noms.
+
+        Args:
+            context: Objets à rendre accessibles aux scripts, indexés par leur nom.
+        """
+        self._namespace: dict[str, Any] = {**(context or {}), "__name__": "__main__"}
 
     @property
     def namespace(self) -> dict[str, Any]:

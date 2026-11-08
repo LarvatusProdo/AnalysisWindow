@@ -1,7 +1,9 @@
-"""Fenêtre principale de l'application."""
+"""Panneau d'analyse intégrable dans n'importe quelle interface Tkinter."""
 
 import tkinter as tk
+from collections.abc import Mapping
 from tkinter import ttk
+from typing import Any
 
 from analyse_app.code_executor import CodeExecutor
 from analyse_app.editor_frame import EditorFrame
@@ -9,20 +11,22 @@ from analyse_app.history_frame import HistoryFrame
 from analyse_app.variable_inspector import inspect_variables
 from analyse_app.variables_frame import VariablesFrame
 
-WINDOW_TITLE = "Fenêtre d'analyse"
-WINDOW_SIZE = "1100x700"
 
+class AnalysisPanel(ttk.Frame):
+    """Assemble les zones d'analyse et les relie au moteur d'exécution."""
 
-class MainWindow(tk.Tk):
-    """Assemble les zones de la fenêtre et les relie au moteur d'exécution."""
+    def __init__(self, parent: tk.Misc, context: Mapping[str, Any] | None = None) -> None:
+        """Construit le panneau.
 
-    def __init__(self) -> None:
-        """Construit la fenêtre et ses zones."""
-        super().__init__()
-        self.title(WINDOW_TITLE)
-        self.geometry(WINDOW_SIZE)
-        self._executor = CodeExecutor()
+        Args:
+            parent: Widget parent.
+            context: Objets, fonctions et méthodes de l'application principale
+                à rendre accessibles aux scripts, indexés par leur nom.
+        """
+        super().__init__(parent)
+        self._executor = CodeExecutor(context)
         self._build_layout()
+        self._refresh_variables()
 
     def _build_layout(self) -> None:
         """Dispose l'historique et l'éditeur à gauche, les variables à droite."""
@@ -44,4 +48,8 @@ class MainWindow(tk.Tk):
             return
         result = self._executor.execute(code)
         self._history_frame.add_entry(code, result)
+        self._refresh_variables()
+
+    def _refresh_variables(self) -> None:
+        """Met à jour l'affichage des variables."""
         self._variables_frame.refresh(inspect_variables(self._executor.namespace))

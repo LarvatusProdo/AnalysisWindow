@@ -106,6 +106,9 @@ python exemple_application.py
 
 ## Structure du projet
 
+L'architecture est expliquée en détail, avec schémas, dans
+[docs/architecture.html](docs/architecture.html) (à ouvrir dans un navigateur).
+
 ```
 fenetre_analyse/
 ├── main.py                    # Lancement autonome

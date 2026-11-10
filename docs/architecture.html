@@ -56,6 +56,7 @@
   main { max-width: 920px; margin: 0 auto; padding: 40px 16px 64px; }
   h1 { font-size: 2rem; margin: 0 0 8px; }
   h2 { font-size: 1.35rem; margin: 48px 0 12px; }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; }
   p.lead { color: var(--muted); margin: 0 0 24px; }
   code, pre { font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.9em; }
   code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
@@ -75,7 +76,8 @@
     border-radius: 10px;
     padding: 16px;
   }
-  .diagram { width: 100%; height: auto; display: block; }
+  .diagram-scroll { overflow-x: auto; }
+  .diagram { width: 100%; min-width: 560px; height: auto; display: block; }
   .diagram text { font-family: system-ui, "Segoe UI", sans-serif; }
   .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 0.85rem; color: var(--muted); }
   .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px;
@@ -83,18 +85,19 @@
   /* Maquette de la fenêtre */
   .mockup {
     display: grid;
-    grid-template-columns: 3fr 1fr;
+    grid-template-columns: 3fr minmax(150px, 1fr);
     grid-template-rows: 3fr 2fr;
     gap: 8px;
-    height: 280px;
+    height: 320px;
   }
   .zone {
     border: 1.5px solid var(--accent);
     background: var(--accent-soft);
     border-radius: 6px;
-    padding: 8px 10px;
+    padding: 8px 10px 40px;
     font-size: 0.85rem;
     position: relative;
+    overflow: hidden;
   }
   .zone strong { display: block; }
   .zone span { color: var(--muted); }
@@ -104,6 +107,9 @@
     border: 1px solid var(--border); background: var(--surface);
     border-radius: 4px; padding: 2px 10px; font-size: 0.8rem;
   }
+  ul.categories { list-style: none; padding: 0; margin: 8px 0 0; }
+  ul.categories li { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; }
+  ul.categories i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
   /* Étapes */
   ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
   ol.steps li {
@@ -136,7 +142,7 @@
   .note { border-left: 3px solid var(--error); padding: 4px 0 4px 14px; }
   ul.tight li { margin-bottom: 6px; }
   @media (max-width: 600px) {
-    .mockup { height: 220px; }
+    .mockup { height: 360px; grid-template-columns: 1fr 1fr; }
     h1 { font-size: 1.6rem; }
   }
 </style>
@@ -146,13 +152,16 @@
   <h1>Architecture de la fenêtre d'analyse</h1>
   <p class="lead">
     Une console Python Tkinter, intégrable dans une autre application et capable d'appeler ses
-    fonctions. Cette page montre comment le code est découpé et ce qui se passe quand on clique sur
-    <strong>▶ Exécuter</strong>.
+    fonctions. Les scripts peuvent aussi être exécutés sans fenêtre, puis vérifiés dans
+    l'historique. Cette page montre comment le code est découpé et ce qui se passe lors d'une
+    exécution.
   </p>
   <nav>
     <a href="#modules">Modules</a>
     <a href="#fenetre">Fenêtre</a>
+    <a href="#session">Session et événements</a>
     <a href="#execution">Déroulement d'une exécution</a>
+    <a href="#variables">Tableau des variables</a>
     <a href="#contexte">Accès à l'application hôte</a>
     <a href="#fichiers">Rôle des fichiers</a>
     <a href="#evolutions">Faire évoluer le projet</a>
@@ -162,11 +171,13 @@
   <p>
     Le projet est séparé en deux couches. Les <strong>widgets</strong> affichent et transmettent
     les actions de l'utilisateur. La <strong>logique</strong> n'importe pas Tkinter et peut donc
-    être testée ou réutilisée seule. <code>AnalysisPanel</code> est le seul module qui relie les
-    deux.
+    être utilisée seule. <code>AnalysisSession</code> est le point d'entrée de la logique : elle
+    possède le <code>CodeExecutor</code> et l'historique. <code>AnalysisPanel</code> est le seul
+    module qui relie les deux couches.
   </p>
   <div class="card">
-    <svg class="diagram" viewBox="0 0 880 510" role="img"
+    <div class="diagram-scroll">
+    <svg class="diagram" viewBox="0 0 880 600" role="img"
          aria-label="Diagramme des dépendances entre les modules">
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
@@ -178,8 +189,9 @@
       <!-- Bandes -->
       <rect x="10" y="282" width="860" height="88" rx="8" fill="var(--accent-soft)" opacity="0.6"/>
       <text x="22" y="300" font-size="12" fill="var(--accent)" font-weight="600">WIDGETS TKINTER</text>
-      <rect x="10" y="400" width="860" height="100" rx="8" fill="var(--logic-soft)" opacity="0.6"/>
-      <text x="22" y="418" font-size="12" fill="var(--logic)" font-weight="600">LOGIQUE (SANS TKINTER)</text>
+      <text x="858" y="300" font-size="11" fill="var(--muted)" text-anchor="end">les trois zones utilisent scrollbars.py</text>
+      <rect x="10" y="396" width="860" height="190" rx="8" fill="var(--logic-soft)" opacity="0.6"/>
+      <text x="22" y="414" font-size="12" fill="var(--logic)" font-weight="600">LOGIQUE (SANS TKINTER)</text>
 
       <!-- Liens -->
       <g fill="none" stroke="var(--muted)" stroke-width="1.6">
@@ -189,31 +201,26 @@
         <path d="M440,244 L440,308" marker-end="url(#arrow)"/>
         <path d="M440,272 L140,272 L140,308" marker-end="url(#arrow)"/>
         <path d="M440,272 L740,272 L740,308" marker-end="url(#arrow)"/>
-        <path d="M330,222 L290,222 L290,428" marker-end="url(#arrow)"/>
-        <path d="M550,222 L590,222 L590,428" marker-end="url(#arrow)"/>
+        <path d="M330,222 L290,222 L290,518" marker-end="url(#arrow)"/>
+        <path d="M550,222 L590,222 L590,438 L554,438" marker-end="url(#arrow)"/>
+        <path d="M770,42 L858,42 L858,456 L554,456" marker-end="url(#arrow)"/>
+        <path d="M530,464 L530,518" marker-end="url(#arrow)"/>
       </g>
-      <g fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="5 4">
-        <path d="M380,354 L380,428" marker-end="url(#arrow)"/>
-        <path d="M680,354 L680,428" marker-end="url(#arrow)"/>
-      </g>
-      <text x="386" y="396" font-size="11" fill="var(--muted)">ExecutionResult</text>
-      <text x="686" y="396" font-size="11" fill="var(--muted)">VariableInfo</text>
+      <text x="852" y="476" font-size="11" fill="var(--muted)" text-anchor="end">l'hôte peut créer et partager la session</text>
 
-      <!-- Points d'entrée -->
       <g font-size="14" text-anchor="middle">
+        <!-- Points d'entrée -->
         <rect x="150" y="20" width="180" height="44" rx="6" fill="var(--surface)"
               stroke="var(--border)" stroke-width="1.5"/>
         <text x="240" y="47" fill="var(--text)" font-family="Consolas, monospace">main.py</text>
-
         <rect x="550" y="20" width="220" height="44" rx="6" fill="var(--surface)"
               stroke="var(--border)" stroke-width="1.5"/>
-        <text x="660" y="47" fill="var(--text)" font-family="Consolas, monospace">03_application_complete.py</text>
+        <text x="660" y="47" fill="var(--text)" font-family="Consolas, monospace">exemples/*.py</text>
 
         <!-- Fenêtre et panneau -->
         <rect x="550" y="110" width="220" height="44" rx="6" fill="var(--surface)"
               stroke="var(--accent)" stroke-width="1.5"/>
         <text x="660" y="137" fill="var(--text)">AnalysisWindow</text>
-
         <rect x="330" y="200" width="220" height="44" rx="6" fill="var(--accent)"/>
         <text x="440" y="227" fill="var(--surface)" font-weight="600">AnalysisPanel</text>
 
@@ -229,54 +236,131 @@
         <text x="740" y="337" fill="var(--text)">VariablesFrame</text>
 
         <!-- Logique -->
-        <rect x="190" y="430" width="220" height="44" rx="6" fill="var(--surface)"
+        <rect x="330" y="420" width="220" height="44" rx="6" fill="var(--logic)"/>
+        <text x="440" y="447" fill="var(--surface)" font-weight="600">AnalysisSession</text>
+        <rect x="150" y="520" width="220" height="44" rx="6" fill="var(--surface)"
               stroke="var(--logic)" stroke-width="1.5"/>
-        <text x="300" y="457" fill="var(--text)">CodeExecutor</text>
-        <rect x="470" y="430" width="220" height="44" rx="6" fill="var(--surface)"
+        <text x="260" y="547" fill="var(--text)" font-family="Consolas, monospace">inspect_variables()</text>
+        <rect x="420" y="520" width="220" height="44" rx="6" fill="var(--surface)"
               stroke="var(--logic)" stroke-width="1.5"/>
-        <text x="580" y="457" fill="var(--text)" font-family="Consolas, monospace">inspect_variables()</text>
+        <text x="530" y="547" fill="var(--text)">CodeExecutor</text>
       </g>
     </svg>
+    </div>
     <div class="legend">
       <span>───▶ crée ou utilise</span>
-      <span>- - -▶ importe seulement un type de données</span>
       <span><span class="swatch" style="border-color: var(--accent)"></span>widget</span>
       <span><span class="swatch" style="border-color: var(--logic)"></span>logique</span>
     </div>
   </div>
   <p>
-    <code>main.py</code> place le panneau directement dans une fenêtre <code>tk.Tk</code>.
-    Une application hôte, comme <code>exemples/03_application_complete.py</code>, passe plutôt par
-    <code>AnalysisWindow</code>, qui l'ouvre dans une fenêtre secondaire.
+    Les modules échangent aussi des objets de données immuables : <code>ExecutionResult</code>
+    (sorties et erreur), <code>HistoryEntry</code> (code, résultat, fichier d'origine),
+    <code>SessionEvent</code> (modification de la session) et <code>VariableInfo</code> (variable à
+    afficher). <code>main.py</code> place le panneau directement dans une fenêtre
+    <code>tk.Tk</code>. Une application hôte passe plutôt par <code>AnalysisWindow</code>, et peut
+    lui fournir sa propre session.
   </p>
 
   <h2 id="fenetre">Disposition de la fenêtre</h2>
   <p>
     <code>AnalysisPanel._build_layout</code> imbrique deux <code>ttk.PanedWindow</code> : un
     séparateur horizontal coupe la fenêtre en deux colonnes, et un séparateur vertical coupe la
-    colonne de gauche en deux. Tous les séparateurs se déplacent à la souris.
+    colonne de gauche en deux. Tous les séparateurs se déplacent à la souris. Chaque zone possède
+    une barre de défilement verticale et une horizontale, placées par
+    <code>attach_scrollbars</code>.
   </p>
   <div class="card">
     <div class="mockup">
-      <div class="zone"><strong>HistoryFrame</strong><span>historique, lecture seule · poids 3</span></div>
-      <div class="zone variables"><strong>VariablesFrame</strong><span>Treeview nom / type / valeur · poids 1</span></div>
+      <div class="zone"><strong>HistoryFrame</strong><span>historique, lecture seule · poids 3</span>
+        <div class="button-mock">Effacer l'historique</div></div>
+      <div class="zone variables"><strong>VariablesFrame</strong><span>Treeview groupé · poids 1</span>
+        <ul class="categories">
+          <li><i style="background:#7b3fbf"></i>Fonctions</li>
+          <li><i style="background:#b05a00"></i>Classes</li>
+          <li><i style="background:#1a5fb4"></i>Nombres</li>
+          <li><i style="background:#2e7d32"></i>Textes</li>
+          <li><i style="background:#00838f"></i>Collections</li>
+          <li><i style="background:#5f6368"></i>Objets</li>
+        </ul>
+        <div class="button-mock">Réinitialiser les variables</div></div>
       <div class="zone"><strong>EditorFrame</strong><span>saisie du code · poids 2</span>
         <div class="button-mock">▶ Exécuter</div></div>
     </div>
   </div>
+  <p>
+    Les widgets ne connaissent pas la session. Chacun reçoit à sa création la fonction à appeler
+    lors d'un clic (<code>on_execute</code>, <code>on_clear</code>, <code>on_reset</code>). Le
+    panneau fournit ces fonctions. Pour Effacer et Réinitialiser, il demande d'abord une
+    confirmation avec <code>messagebox.askyesno</code>.
+  </p>
 
-  <h2 id="execution">Déroulement d'une exécution</h2>
-  <p>Voici ce qui se passe entre le clic sur le bouton et la mise à jour de l'affichage.</p>
+  <h2 id="session">Session et événements</h2>
+  <p>
+    <code>AnalysisSession</code> regroupe tout ce qui doit survivre à la fenêtre : l'exécuteur,
+    donc les variables, et l'historique des exécutions. Elle ne dépend pas de Tkinter. Une
+    application peut donc exécuter des scripts sans rien afficher, puis ouvrir la fenêtre plus
+    tard sur la même session.
+  </p>
+<pre><code>session = AnalysisSession(context={"app": self})
+session.run("x = 1")                      # aucune fenêtre
+session.run_file("scripts/analyse.py")    # idem, depuis un fichier
+AnalysisWindow(self, session=session)     # affiche les deux exécutions et x</code></pre>
+  <h3>Méthodes</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Méthode</th><th>Effet</th><th>Événement émis</th></tr></thead>
+      <tbody>
+        <tr><td><code>run(code)</code></td><td>Exécute le code, ajoute une <code>HistoryEntry</code>, retourne l'<code>ExecutionResult</code>.</td><td><code>ENTRY_ADDED</code></td></tr>
+        <tr><td><code>run_file(path, encoding)</code></td><td>Lit le fichier puis fait comme <code>run</code>, en notant le chemin dans <code>source</code>. Un fichier illisible lève <code>OSError</code> ou <code>UnicodeDecodeError</code> sans rien ajouter.</td><td><code>ENTRY_ADDED</code></td></tr>
+        <tr><td><code>clear_history()</code></td><td>Vide l'historique ; les variables restent.</td><td><code>HISTORY_CLEARED</code></td></tr>
+        <tr><td><code>reset_namespace()</code></td><td>Appelle <code>CodeExecutor.reset</code> : variables des scripts supprimées, contexte initial rétabli.</td><td><code>NAMESPACE_RESET</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Abonnement du panneau</h3>
   <ol class="steps">
     <li>
-      <strong>Le bouton appelle le panneau.</strong> <code>EditorFrame</code> ne connaît pas le
-      moteur d'exécution : il reçoit à sa création une fonction <code>on_execute</code> et l'appelle
-      au clic.
+      <strong>Rattrapage.</strong> À sa création, le panneau affiche chaque entrée de
+      <code>session.history</code> puis les variables actuelles.
+      <div class="where">AnalysisPanel.__init__</div>
+    </li>
+    <li>
+      <strong>Abonnement.</strong> Il appelle <code>session.subscribe(self._on_session_event)</code>.
+      La session appellera cette fonction avec un <code>SessionEvent</code> à chaque modification,
+      quelle qu'en soit l'origine : bouton du panneau, application hôte ou autre panneau partageant
+      la session.
+    </li>
+    <li>
+      <strong>Réaction.</strong> <code>ENTRY_ADDED</code> ajoute l'entrée à l'historique et
+      rafraîchit les variables. <code>HISTORY_CLEARED</code> vide l'historique.
+      <code>NAMESPACE_RESET</code> rafraîchit les variables.
+      <div class="where">AnalysisPanel._on_session_event</div>
+    </li>
+    <li>
+      <strong>Désabonnement.</strong> À la destruction du panneau (fermeture de la fenêtre),
+      l'événement Tk <code>&lt;Destroy&gt;</code> déclenche <code>session.unsubscribe</code>. La
+      session continue d'exister et garde tout.
+      <div class="where">AnalysisPanel._on_destroy</div>
+    </li>
+  </ol>
+  <p>
+    Le bouton Exécuter suit le même chemin : le panneau appelle <code>session.run</code> et ne met
+    pas l'affichage à jour lui-même. C'est l'événement <code>ENTRY_ADDED</code> qui s'en charge, ce
+    qui garantit un seul chemin de mise à jour.
+  </p>
+
+  <h2 id="execution">Déroulement d'une exécution</h2>
+  <p>Voici ce qui se passe entre le clic sur ▶ Exécuter et la mise à jour de l'affichage.</p>
+  <ol class="steps">
+    <li>
+      <strong>Le bouton appelle le panneau.</strong> <code>EditorFrame</code> appelle la fonction
+      <code>on_execute</code> reçue à sa création.
       <div class="where">editor_frame.py → AnalysisPanel._execute_code</div>
     </li>
     <li>
-      <strong>Le panneau lit le code.</strong> <code>get_code()</code> retourne le texte saisi. Si
-      le texte est vide ou ne contient que des espaces, rien ne se passe.
+      <strong>Le panneau transmet le code à la session.</strong> <code>get_code()</code> retourne
+      le texte saisi. S'il n'est pas vide, le panneau appelle <code>session.run(code)</code>.
       <div class="where">analysis_panel.py</div>
     </li>
     <li class="logic">
@@ -304,60 +388,111 @@
       <div class="where">code_executor.py · _format_exception, _user_traceback</div>
     </li>
     <li class="logic">
-      <strong>Le résultat est retourné.</strong> Un objet immuable
-      <code>ExecutionResult(output, error)</code> regroupe le texte capturé et le traceback
-      éventuel.
+      <strong>Le résultat est enregistré.</strong> L'exécuteur retourne un
+      <code>ExecutionResult(output, error)</code>. La session l'enveloppe dans une
+      <code>HistoryEntry</code>, l'ajoute à l'historique, puis prévient ses abonnés avec
+      <code>SessionEvent(ENTRY_ADDED, entry)</code>.
+      <div class="where">analysis_session.py · run, _record, _notify</div>
     </li>
     <li>
-      <strong>L'historique est complété.</strong> <code>HistoryFrame.add_entry</code> ajoute le code
-      précédé de <code>&gt;&gt;&gt;</code> puis <code>...</code>, la sortie, puis l'erreur, chacun
-      avec son style. Le widget repasse ensuite en lecture seule et défile jusqu'en bas.
+      <strong>L'historique est complété.</strong> <code>HistoryFrame.add_entry</code> ajoute
+      l'éventuel <code># Fichier : …</code>, puis le code précédé de <code>&gt;&gt;&gt;</code> et
+      <code>...</code>, la sortie et l'erreur, chacun avec son style. Le widget repasse ensuite en
+      lecture seule et défile jusqu'en bas.
       <div class="where">history_frame.py</div>
     </li>
     <li class="logic">
-      <strong>Les variables sont extraites.</strong> <code>inspect_variables</code> parcourt
-      l'espace de noms et ignore les noms commençant par <code>_</code> ainsi que les modules. Pour
-      chaque variable, il produit un <code>VariableInfo</code> dont la valeur est ramenée sur une
-      seule ligne et coupée à 100 caractères. Si <code>repr</code> échoue, la valeur affichée est
-      <code>&lt;valeur indisponible&gt;</code>.
+      <strong>Les variables sont extraites et classées.</strong> <code>inspect_variables</code>
+      parcourt l'espace de noms, ignore les noms commençant par <code>_</code> et les modules, et
+      produit un <code>VariableInfo</code> par variable, avec sa catégorie.
       <div class="where">variable_inspector.py</div>
     </li>
     <li>
-      <strong>Le tableau est remplacé.</strong> <code>VariablesFrame.refresh</code> vide le
-      Treeview puis y insère une ligne par variable.
+      <strong>Le tableau est reconstruit.</strong> <code>VariablesFrame.refresh</code> note les
+      groupes repliés, vide le Treeview, insère un groupe par catégorie non vide, puis élargit si
+      besoin la colonne Valeur.
       <div class="where">variables_frame.py</div>
     </li>
   </ol>
   <p class="note">
     Tout cela se déroule dans le fil de l'interface Tkinter. C'est ce qui permet au script de
     manipuler les widgets de l'application hôte sans risque, mais c'est aussi pourquoi un calcul
-    long fige la fenêtre.
+    long fige la fenêtre. Pour la même raison, les méthodes de la session doivent être appelées
+    depuis ce fil lorsqu'un panneau y est abonné.
   </p>
+
+  <h2 id="variables">Tableau des variables</h2>
+  <p>
+    Le classement est fait par <code>classify</code>, dans la couche logique. Les tests sont
+    appliqués dans cet ordre, et le premier qui réussit détermine la catégorie :
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Ordre</th><th>Test</th><th>Catégorie</th><th>Valeur affichée</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><code>isinstance(value, type)</code></td><td>Classes</td><td><code>repr</code></td></tr>
+        <tr><td>2</td><td><code>callable(value)</code></td><td>Fonctions</td><td>nom et signature (<code>inspect.signature</code>)</td></tr>
+        <tr><td>3</td><td><code>int</code>, <code>float</code>, <code>complex</code> (donc <code>bool</code>)</td><td>Nombres</td><td><code>repr</code></td></tr>
+        <tr><td>4</td><td><code>str</code>, <code>bytes</code>, <code>bytearray</code></td><td>Textes</td><td><code>repr</code></td></tr>
+        <tr><td>5</td><td><code>collections.abc.Collection</code></td><td>Collections</td><td><code>repr</code></td></tr>
+        <tr><td>6</td><td>tout le reste</td><td>Objets</td><td><code>repr</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul class="tight">
+    <li>
+      Les classes sont testées avant les fonctions, car une classe est elle aussi appelable.
+    </li>
+    <li>
+      Les valeurs sont ramenées sur une ligne et coupées à 100 caractères. Si <code>repr</code>
+      échoue, la valeur affichée est <code>&lt;valeur indisponible&gt;</code>.
+    </li>
+    <li>
+      Les couleurs sont un détail d'affichage : elles sont définies dans
+      <code>CATEGORY_COLORS</code> (<code>variables_frame.py</code>), et appliquées par des
+      <em>tags</em> du Treeview. L'en-tête de chaque groupe est en gras et indique le nombre de
+      variables.
+    </li>
+    <li>
+      Les colonnes Nom et Type ont une largeur fixe. La colonne Valeur s'élargit avec le panneau,
+      mais sa largeur minimale est celle de la valeur la plus longue : la barre horizontale
+      permet alors de tout lire.
+    </li>
+  </ul>
 
   <h2 id="contexte">Accès à l'application hôte</h2>
   <p>
-    Le dictionnaire <code>context</code> passé à <code>AnalysisWindow</code> ou à
-    <code>AnalysisPanel</code> devient le point de départ de l'espace de noms du
-    <code>CodeExecutor</code>. Cet espace de noms sert ensuite de variables globales à tous les
-    scripts.
+    Le dictionnaire <code>context</code> passé à la session (ou à <code>AnalysisWindow</code> et
+    <code>AnalysisPanel</code>, qui créent alors leur propre session) devient le point de départ
+    de l'espace de noms du <code>CodeExecutor</code>. Cet espace de noms sert ensuite de
+    variables globales à tous les scripts.
   </p>
 <pre><code># code_executor.py
-self._namespace = {**(context or {}), "__name__": "__main__"}</code></pre>
+def reset(self) -> None:
+    self._namespace.clear()
+    self._namespace.update(self._context)
+    self._namespace["__name__"] = "__main__"</code></pre>
   <ul class="tight">
     <li>
       Les objets du contexte sont <strong>les mêmes objets</strong> que ceux de l'application, et
       non des copies : <code>measures.append(1)</code> modifie bien la liste de l'hôte.
     </li>
     <li>
-      Réaffecter un nom (<code>measures = []</code>) ne change que l'espace de noms de la fenêtre
-      d'analyse. L'application conserve ses données.
+      Réaffecter un nom (<code>measures = []</code>) ne change que l'espace de noms de la session.
+      L'application conserve ses données.
+    </li>
+    <li>
+      <code>reset</code> est appelé à la création de l'exécuteur et par
+      <code>reset_namespace</code>. Il vide le dictionnaire <strong>sur place</strong>, ce qui
+      garde valides les références à <code>namespace</code>, puis remet le contexte initial. Les
+      modifications internes aux objets du contexte ne sont pas annulées.
     </li>
     <li>
       <code>__name__</code> est placé en dernier : le contexte ne peut donc pas le remplacer. Les
       classes définies dans un script sont ainsi rattachées à <code>__main__</code>.
     </li>
     <li>
-      L'espace de noms est conservé d'une exécution à l'autre, tant que le panneau existe.
+      L'espace de noms est conservé d'une exécution à l'autre, tant que la session existe.
     </li>
   </ul>
 
@@ -368,51 +503,63 @@ self._namespace = {**(context or {}), "__name__": "__main__"}</code></pre>
       <tbody>
         <tr><td><a href="../main.py"><code>main.py</code></a></td><td><span class="tag entry">entrée</span></td>
             <td>Lancer la fenêtre seule.</td><td><code>main()</code></td></tr>
-        <tr><td><a href="../exemples/03_application_complete.py"><code>exemples/03_application_complete.py</code></a></td><td><span class="tag entry">entrée</span></td>
-            <td>Montrer l'intégration dans une application hôte.</td><td><code>HostApplication</code></td></tr>
+        <tr><td><a href="../exemples/"><code>exemples/</code></a></td><td><span class="tag entry">entrée</span></td>
+            <td>Montrer les usages : panneau, fenêtre, application complète, exécution sans interface ; <code>scripts/</code> contient des fichiers à exécuter.</td><td>—</td></tr>
         <tr><td><a href="../analyse_app/analysis_window.py"><code>analysis_window.py</code></a></td><td><span class="tag ui">widget</span></td>
-            <td>Ouvrir le panneau dans une fenêtre secondaire.</td><td><code>AnalysisWindow(parent, context)</code>, attribut <code>panel</code></td></tr>
+            <td>Ouvrir le panneau dans une fenêtre secondaire.</td><td><code>AnalysisWindow(parent, context, session)</code>, attribut <code>panel</code></td></tr>
         <tr><td><a href="../analyse_app/analysis_panel.py"><code>analysis_panel.py</code></a></td><td><span class="tag ui">widget</span></td>
-            <td>Assembler les zones et coordonner l'exécution.</td><td><code>AnalysisPanel(parent, context)</code></td></tr>
+            <td>Assembler les zones, relayer les clics vers la session, suivre ses événements.</td><td><code>AnalysisPanel(parent, context, session)</code>, <code>session</code></td></tr>
         <tr><td><a href="../analyse_app/editor_frame.py"><code>editor_frame.py</code></a></td><td><span class="tag ui">widget</span></td>
             <td>Saisie du code et bouton Exécuter.</td><td><code>EditorFrame(parent, on_execute)</code>, <code>get_code()</code></td></tr>
         <tr><td><a href="../analyse_app/history_frame.py"><code>history_frame.py</code></a></td><td><span class="tag ui">widget</span></td>
-            <td>Afficher les exécutions passées.</td><td><code>add_entry(code, result)</code></td></tr>
+            <td>Afficher les exécutions passées ; bouton Effacer.</td><td><code>HistoryFrame(parent, on_clear)</code>, <code>add_entry(code, result, source)</code>, <code>clear()</code></td></tr>
         <tr><td><a href="../analyse_app/variables_frame.py"><code>variables_frame.py</code></a></td><td><span class="tag ui">widget</span></td>
-            <td>Afficher les variables dans un Treeview.</td><td><code>refresh(variables)</code></td></tr>
+            <td>Afficher les variables par catégorie ; bouton Réinitialiser.</td><td><code>VariablesFrame(parent, on_reset)</code>, <code>refresh(variables)</code></td></tr>
+        <tr><td><a href="../analyse_app/scrollbars.py"><code>scrollbars.py</code></a></td><td><span class="tag ui">widget</span></td>
+            <td>Placer un <code>Text</code> ou un <code>Treeview</code> avec ses deux barres de défilement.</td><td><code>attach_scrollbars(container, widget)</code></td></tr>
+        <tr><td><a href="../analyse_app/analysis_session.py"><code>analysis_session.py</code></a></td><td><span class="tag logic">logique</span></td>
+            <td>Exécuter, garder l'historique, prévenir les abonnés.</td><td><code>AnalysisSession</code>, <code>HistoryEntry</code>, <code>SessionEvent</code>, <code>EventKind</code></td></tr>
         <tr><td><a href="../analyse_app/code_executor.py"><code>code_executor.py</code></a></td><td><span class="tag logic">logique</span></td>
-            <td>Exécuter le code, capturer sorties et erreurs.</td><td><code>CodeExecutor</code>, <code>execute()</code>, <code>namespace</code>, <code>ExecutionResult</code></td></tr>
+            <td>Exécuter le code, capturer sorties et erreurs, réinitialiser l'espace de noms.</td><td><code>CodeExecutor</code>, <code>execute()</code>, <code>reset()</code>, <code>namespace</code>, <code>ExecutionResult</code></td></tr>
         <tr><td><a href="../analyse_app/variable_inspector.py"><code>variable_inspector.py</code></a></td><td><span class="tag logic">logique</span></td>
-            <td>Choisir et mettre en forme les variables à afficher.</td><td><code>inspect_variables()</code>, <code>VariableInfo</code></td></tr>
+            <td>Choisir, classer et mettre en forme les variables à afficher.</td><td><code>inspect_variables()</code>, <code>group_by_category()</code>, <code>classify()</code>, <code>Category</code>, <code>VariableInfo</code></td></tr>
       </tbody>
     </table>
   </div>
   <p>
-    Le paquet <code>analyse_app</code> n'expose que <code>AnalysisPanel</code> et
-    <code>AnalysisWindow</code> (voir <code>__init__.py</code>). Les autres modules sont des
-    détails internes.
+    Le paquet <code>analyse_app</code> expose <code>AnalysisPanel</code>,
+    <code>AnalysisWindow</code>, <code>AnalysisSession</code>, <code>ExecutionResult</code>,
+    <code>HistoryEntry</code>, <code>SessionEvent</code> et <code>EventKind</code> (voir
+    <code>__init__.py</code>). Les autres modules sont des détails internes.
   </p>
 
   <h2 id="evolutions">Faire évoluer le projet</h2>
   <ul class="tight">
     <li>
       <strong>Ajouter une zone</strong> (par exemple un graphique) : créer un nouveau
-      <code>ttk.LabelFrame</code> dans son propre fichier, puis l'ajouter dans
-      <code>AnalysisPanel._build_layout</code> et le mettre à jour dans
-      <code>_execute_code</code>.
+      <code>ttk.LabelFrame</code> dans son propre fichier, l'ajouter dans
+      <code>AnalysisPanel._build_layout</code>, puis le mettre à jour dans
+      <code>AnalysisPanel._on_session_event</code>.
     </li>
     <li>
-      <strong>Changer la façon d'exécuter le code</strong> (fil séparé, délai maximal…) : seuls
-      <code>CodeExecutor</code> et <code>AnalysisPanel._execute_code</code> sont concernés. Les
-      widgets ne dépendent que d'<code>ExecutionResult</code>.
+      <strong>Ajouter une action sur la session</strong> (par exemple enregistrer l'historique
+      dans un fichier) : ajouter la méthode à <code>AnalysisSession</code>, un membre à
+      <code>EventKind</code> si l'affichage doit réagir, puis traiter cet événement dans le panneau.
     </li>
     <li>
-      <strong>Changer les variables affichées</strong> (montrer les modules, détailler les
-      dictionnaires…) : tout se trouve dans <code>variable_inspector.py</code>.
+      <strong>Changer la façon d'exécuter le code</strong> (fil séparé, délai maximal…) :
+      <code>CodeExecutor</code> et <code>AnalysisSession.run</code> sont concernés. Les widgets ne
+      dépendent que d'<code>ExecutionResult</code> et des événements.
     </li>
     <li>
-      <strong>Tester sans interface</strong> : <code>CodeExecutor</code> et
-      <code>inspect_variables</code> s'utilisent directement, sans créer de fenêtre.
+      <strong>Changer les catégories de variables</strong> : modifier <code>Category</code> et
+      <code>classify</code> dans <code>variable_inspector.py</code>, puis la couleur
+      correspondante dans <code>CATEGORY_COLORS</code>.
+    </li>
+    <li>
+      <strong>Tester sans interface</strong> : <code>AnalysisSession</code>,
+      <code>CodeExecutor</code> et <code>inspect_variables</code> s'utilisent directement, sans
+      créer de fenêtre (voir <code>exemples/04_sans_interface.py</code>).
     </li>
   </ul>
 </main>

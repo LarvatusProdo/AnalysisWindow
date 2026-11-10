@@ -140,6 +140,9 @@ Le sous-dossier [exemples/scripts/](exemples/scripts/) contient des fichiers à 
 - **Sorties capturées :** les sorties de `print` (stdout et stderr) s'affichent dans l'historique.
 - **Erreurs sans fermeture :** une erreur, y compris `SyntaxError` ou `sys.exit()`, affiche le
   traceback mais ne ferme pas l'application.
+- **Défilement horizontal :** l'historique, l'éditeur et le tableau des variables ont chacun une
+  barre horizontale. Les lignes longues ne sont pas renvoyées à la ligne, y compris dans
+  l'historique. La colonne Valeur est toujours assez large pour afficher la valeur la plus longue.
 - **Variables regroupées :** le tableau range les variables en groupes repliables, chacun avec
   sa couleur. Un groupe replié le reste après les exécutions suivantes.
 
@@ -190,5 +193,6 @@ fenetre_analyse/
     ├── history_frame.py       # Historique
     ├── variables_frame.py     # Tableau des variables par catégorie (Treeview)
     ├── code_executor.py       # Exécution du code et capture des sorties
+    ├── scrollbars.py          # Barres de défilement verticale et horizontale
     └── variable_inspector.py  # Extraction et classement des variables
 ```

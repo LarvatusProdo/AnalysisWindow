@@ -2,9 +2,9 @@
 
 import tkinter as tk
 from tkinter import ttk
-from tkinter.scrolledtext import ScrolledText
 
 from analyse_app.code_executor import ExecutionResult
+from analyse_app.scrollbars import attach_scrollbars
 
 CODE_COLOR = "#1f4e9e"
 ERROR_COLOR = "#c62828"
@@ -21,12 +21,12 @@ class HistoryFrame(ttk.LabelFrame):
             parent: Widget parent.
         """
         super().__init__(parent, text="Historique", padding=4)
-        self._text = ScrolledText(self, height=15, wrap="word", state="disabled",
-                                  font="TkFixedFont")
+        self._text = tk.Text(self, height=15, wrap="none", state="disabled",
+                             font="TkFixedFont")
         self._text.tag_configure("code", foreground=CODE_COLOR)
         self._text.tag_configure("error", foreground=ERROR_COLOR)
         self._text.tag_configure("source", foreground=SOURCE_COLOR)
-        self._text.pack(fill="both", expand=True)
+        attach_scrollbars(self, self._text)
 
     def add_entry(self, code: str, result: ExecutionResult, source: str | None = None) -> None:
         """Ajoute un script et son résultat à la fin de l'historique.

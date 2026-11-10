@@ -3,7 +3,8 @@
 import tkinter as tk
 from collections.abc import Callable
 from tkinter import ttk
-from tkinter.scrolledtext import ScrolledText
+
+from analyse_app.scrollbars import attach_scrollbars
 
 
 class EditorFrame(ttk.LabelFrame):
@@ -17,8 +18,11 @@ class EditorFrame(ttk.LabelFrame):
             on_execute: Fonction appelée lors d'un clic sur le bouton.
         """
         super().__init__(parent, text="Code Python", padding=4)
-        self._text = ScrolledText(self, height=10, wrap="none", undo=True, font="TkFixedFont")
-        self._text.pack(fill="both", expand=True)
+        text_container = ttk.Frame(self)
+        text_container.pack(fill="both", expand=True)
+        self._text = tk.Text(text_container, height=10, wrap="none", undo=True,
+                             font="TkFixedFont")
+        attach_scrollbars(text_container, self._text)
         self._execute_button = ttk.Button(self, text="▶ Exécuter", command=on_execute)
         self._execute_button.pack(anchor="e", pady=(4, 0))
 

@@ -3,10 +3,13 @@
 import tkinter as tk
 from tkinter import font, ttk
 
+from analyse_app.scrollbars import attach_scrollbars
 from analyse_app.variable_inspector import Category, VariableInfo, group_by_category
 
 COLUMNS = (("type", "Type", 80), ("value", "Valeur", 200))
 NAME_COLUMN_WIDTH = 150
+VALUE_COLUMN = "value"
+CELL_PADDING = 16
 CATEGORY_COLORS = {
     Category.FUNCTION: "#7b3fbf",
     Category.CLASS: "#b05a00",
@@ -32,18 +35,19 @@ class VariablesFrame(ttk.LabelFrame):
                                   show="tree headings")
         self._configure_columns()
         self._configure_colors()
-        scrollbar = ttk.Scrollbar(self, orient="vertical", command=self._tree.yview)
-        self._tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-        self._tree.pack(side="left", fill="both", expand=True)
+        attach_scrollbars(self, self._tree)
 
     def _configure_columns(self) -> None:
-        """Définit les en-têtes et largeurs ; la colonne de l'arbre porte le nom."""
+        """Définit les en-têtes et largeurs ; la colonne de l'arbre porte le nom.
+
+        Seule la colonne des valeurs s'élargit avec le panneau.
+        """
         self._tree.heading("#0", text="Nom", anchor="w")
-        self._tree.column("#0", width=NAME_COLUMN_WIDTH, anchor="w")
+        self._tree.column("#0", width=NAME_COLUMN_WIDTH, anchor="w", stretch=False)
         for identifier, heading, width in COLUMNS:
             self._tree.heading(identifier, text=heading, anchor="w")
-            self._tree.column(identifier, width=width, anchor="w")
+            self._tree.column(identifier, width=width, anchor="w",
+                              stretch=identifier == VALUE_COLUMN)
 
     def _configure_colors(self) -> None:
         """Associe une couleur à chaque catégorie ; les groupes sont en gras."""
@@ -65,6 +69,20 @@ class VariablesFrame(ttk.LabelFrame):
         self._tree.delete(*self._tree.get_children())
         for category, members in group_by_category(variables).items():
             self._insert_category(category, members, category.name not in collapsed)
+        self._fit_value_column(variables)
+
+    def _fit_value_column(self, variables: list[VariableInfo]) -> None:
+        """Empêche la colonne des valeurs d'être plus étroite que son contenu.
+
+        Si le panneau est trop étroit, la barre horizontale permet alors de lire
+        les valeurs en entier.
+
+        Args:
+            variables: Variables affichées.
+        """
+        measure = font.nametofont("TkDefaultFont").measure
+        needed = max((measure(variable.value) for variable in variables), default=0)
+        self._tree.column(VALUE_COLUMN, minwidth=needed + CELL_PADDING)
 
     def _insert_category(self, category: Category, members: list[VariableInfo],
                          is_open: bool) -> None:

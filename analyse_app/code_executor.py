@@ -25,6 +25,11 @@ class ExecutionResult:
     output: str
     error: str | None = None
 
+    @property
+    def succeeded(self) -> bool:
+        """Indique si l'exécution s'est terminée sans erreur."""
+        return self.error is None
+
 
 class CodeExecutor:
     """Exécute des scripts dans un espace de noms conservé entre les exécutions."""

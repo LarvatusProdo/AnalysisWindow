@@ -66,11 +66,45 @@ print(compute_average(measures))   # affiche 50.0
 Ces appels agissent sur la véritable application. Les objets transmis apparaissent aussi dans le
 tableau des variables.
 
+### Exécuter un script sans afficher la fenêtre
+
+`AnalysisSession` contient l'exécution et l'historique, sans aucune interface. L'application
+crée une session au démarrage, y exécute des scripts quand elle le souhaite, puis la passe à la
+fenêtre ou au panneau, qui affiche alors tout l'historique et les variables :
+
+```python
+from analyse_app import AnalysisSession, AnalysisWindow
+
+self.session = AnalysisSession(context={"app": self, "measures": self.measures})
+
+# Sans fenêtre
+result = self.session.run("compute_average(measures)")
+if result.succeeded:
+    print(result.output)      # sorties + valeur de la dernière expression
+else:
+    print(result.error)       # traceback
+
+# Plus tard : la fenêtre affiche les scripts déjà exécutés et leurs variables
+AnalysisWindow(self, session=self.session)
+```
+
+| Élément | Rôle |
+|---------|------|
+| `session.run(code)` | Exécute le script, l'ajoute à l'historique, retourne un `ExecutionResult`. |
+| `result.output`, `result.error`, `result.succeeded` | Sorties, traceback (ou `None`), succès. |
+| `session.history` | Exécutions passées (`HistoryEntry` : `code`, `result`). |
+| `session.namespace` | Variables de la session. |
+
+Si la fenêtre est ouverte pendant un appel à `session.run`, l'historique et les variables se
+mettent à jour immédiatement. Fermer la fenêtre ne perd rien : la session conserve tout.
+`context` et `session` ne peuvent pas être fournis ensemble (`ValueError`).
+
 ### Exemple complet
 
 [exemple_application.py](exemple_application.py) montre une application qui gère une liste
 de mesures, avec un bouton qui ouvre la fenêtre d'analyse. Un second clic ramène la fenêtre au
-premier plan au lieu d'en créer une autre.
+premier plan au lieu d'en créer une autre. Le bouton « Calculer la moyenne (sans fenêtre) »
+exécute un script dans la session sans rien afficher ; il apparaît ensuite dans l'historique.
 
 ```
 python exemple_application.py
@@ -103,6 +137,8 @@ python exemple_application.py
 - **`input()` :** cette fonction ne passe pas par la fenêtre. Elle attend une saisie dans le
   terminal et bloque l'interface.
 - **Tableau des variables :** il n'est rafraîchi qu'après une exécution.
+- **`session.run` dans le fil de l'interface :** si la fenêtre est ouverte, `run` met à jour ses
+  widgets. Il faut donc l'appeler depuis le fil Tkinter, pas depuis un thread secondaire.
 
 ## Structure du projet
 
@@ -116,6 +152,7 @@ fenetre_analyse/
 └── analyse_app/
     ├── analysis_window.py     # Fenêtre secondaire (Toplevel)
     ├── analysis_panel.py      # Panneau assemblant les zones
+    ├── analysis_session.py    # Session sans interface : exécution et historique
     ├── editor_frame.py        # Éditeur et bouton Exécuter
     ├── history_frame.py       # Historique
     ├── variables_frame.py     # Tableau des variables (Treeview)

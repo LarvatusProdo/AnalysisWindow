@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from tkinter import ttk
 from typing import Any
 
-from analyse_app.code_executor import CodeExecutor
+from analyse_app.analysis_session import AnalysisSession, HistoryEntry
 from analyse_app.editor_frame import EditorFrame
 from analyse_app.history_frame import HistoryFrame
 from analyse_app.variable_inspector import inspect_variables
@@ -13,20 +13,36 @@ from analyse_app.variables_frame import VariablesFrame
 
 
 class AnalysisPanel(ttk.Frame):
-    """Assemble les zones d'analyse et les relie au moteur d'exécution."""
+    """Affiche une session d'analyse : historique, éditeur et variables."""
 
-    def __init__(self, parent: tk.Misc, context: Mapping[str, Any] | None = None) -> None:
+    def __init__(self, parent: tk.Misc, context: Mapping[str, Any] | None = None,
+                 session: AnalysisSession | None = None) -> None:
         """Construit le panneau.
 
         Args:
             parent: Widget parent.
             context: Objets, fonctions et méthodes de l'application principale
-                à rendre accessibles aux scripts, indexés par leur nom.
+                à rendre accessibles aux scripts, indexés par leur nom. Ignoré
+                lorsqu'une session est fournie.
+            session: Session existante à afficher, avec son historique et ses
+                variables. Si absente, une nouvelle session est créée.
+
+        Raises:
+            ValueError: Si `context` et `session` sont fournis ensemble.
         """
         super().__init__(parent)
-        self._executor = CodeExecutor(context)
+        self._session = _resolve_session(context, session)
         self._build_layout()
+        for entry in self._session.history:
+            self._history_frame.add_entry(entry.code, entry.result)
         self._refresh_variables()
+        self._session.subscribe(self._on_new_entry)
+        self.bind("<Destroy>", self._on_destroy, add="+")
+
+    @property
+    def session(self) -> AnalysisSession:
+        """Retourne la session affichée par le panneau."""
+        return self._session
 
     def _build_layout(self) -> None:
         """Dispose l'historique et l'éditeur à gauche, les variables à droite."""
@@ -42,14 +58,50 @@ class AnalysisPanel(ttk.Frame):
         horizontal_pane.add(self._variables_frame, weight=1)
 
     def _execute_code(self) -> None:
-        """Exécute le code saisi puis met à jour l'historique et les variables."""
+        """Exécute le code saisi ; l'affichage est mis à jour par `_on_new_entry`."""
         code = self._editor_frame.get_code()
-        if not code.strip():
-            return
-        result = self._executor.execute(code)
-        self._history_frame.add_entry(code, result)
+        if code.strip():
+            self._session.run(code)
+
+    def _on_new_entry(self, entry: HistoryEntry) -> None:
+        """Affiche une exécution, qu'elle vienne de l'éditeur ou de l'application.
+
+        Args:
+            entry: Nouvelle entrée de l'historique de la session.
+        """
+        self._history_frame.add_entry(entry.code, entry.result)
         self._refresh_variables()
+
+    def _on_destroy(self, event: tk.Event) -> None:
+        """Cesse de suivre la session lorsque le panneau est détruit.
+
+        Args:
+            event: Événement de destruction, propagé aussi par les widgets enfants.
+        """
+        if event.widget is self:
+            self._session.unsubscribe(self._on_new_entry)
 
     def _refresh_variables(self) -> None:
         """Met à jour l'affichage des variables."""
-        self._variables_frame.refresh(inspect_variables(self._executor.namespace))
+        self._variables_frame.refresh(inspect_variables(self._session.namespace))
+
+
+def _resolve_session(context: Mapping[str, Any] | None,
+                     session: AnalysisSession | None) -> AnalysisSession:
+    """Retourne la session fournie, ou en crée une à partir du contexte.
+
+    Args:
+        context: Contexte d'une nouvelle session.
+        session: Session existante.
+
+    Returns:
+        La session à afficher.
+
+    Raises:
+        ValueError: Si `context` et `session` sont fournis ensemble.
+    """
+    if session is None:
+        return AnalysisSession(context)
+    if context is not None:
+        raise ValueError("Fournir soit context, soit session, pas les deux.")
+    return session

@@ -8,7 +8,8 @@ La fenêtre comporte :
 
 - **un éditeur** pour saisir le code, avec un bouton **▶ Exécuter** ;
 - **un historique** des scripts exécutés et de leurs résultats (code en bleu, erreurs en rouge) ;
-- **un tableau des variables** (nom, type, valeur), mis à jour après chaque exécution.
+- **un tableau des variables** (nom, type, valeur), mis à jour après chaque exécution et
+  regroupé par catégorie, avec une couleur par catégorie.
 
 ## Prérequis
 
@@ -139,6 +140,17 @@ Le sous-dossier [exemples/scripts/](exemples/scripts/) contient des fichiers à 
 - **Sorties capturées :** les sorties de `print` (stdout et stderr) s'affichent dans l'historique.
 - **Erreurs sans fermeture :** une erreur, y compris `SyntaxError` ou `sys.exit()`, affiche le
   traceback mais ne ferme pas l'application.
+- **Variables regroupées :** le tableau range les variables en groupes repliables, chacun avec
+  sa couleur. Un groupe replié le reste après les exécutions suivantes.
+
+  | Groupe | Contenu | Couleur |
+  |--------|---------|---------|
+  | Fonctions | fonctions, méthodes, lambdas, objets appelables (affichés avec leur signature) | violet |
+  | Classes | classes | orange |
+  | Nombres | `int`, `float`, `complex`, `bool` | bleu |
+  | Textes | `str`, `bytes`, `bytearray` | vert |
+  | Collections | `list`, `tuple`, `dict`, `set`… et tout objet ayant `len`, l'itération et `in` | turquoise |
+  | Objets | tout le reste, y compris `None` | gris |
 - **Variables masquées :** les modules importés et les noms commençant par `_` n'apparaissent pas
   dans le tableau.
 - **Valeurs tronquées :** dans le tableau, les valeurs sont coupées à 100 caractères.
@@ -176,7 +188,7 @@ fenetre_analyse/
     ├── analysis_session.py    # Session sans interface : exécution et historique
     ├── editor_frame.py        # Éditeur et bouton Exécuter
     ├── history_frame.py       # Historique
-    ├── variables_frame.py     # Tableau des variables (Treeview)
+    ├── variables_frame.py     # Tableau des variables par catégorie (Treeview)
     ├── code_executor.py       # Exécution du code et capture des sorties
-    └── variable_inspector.py  # Extraction des variables à afficher
+    └── variable_inspector.py  # Extraction et classement des variables
 ```

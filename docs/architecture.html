@@ -207,7 +207,7 @@
 
         <rect x="550" y="20" width="220" height="44" rx="6" fill="var(--surface)"
               stroke="var(--border)" stroke-width="1.5"/>
-        <text x="660" y="47" fill="var(--text)" font-family="Consolas, monospace">exemple_application.py</text>
+        <text x="660" y="47" fill="var(--text)" font-family="Consolas, monospace">03_application_complete.py</text>
 
         <!-- Fenêtre et panneau -->
         <rect x="550" y="110" width="220" height="44" rx="6" fill="var(--surface)"
@@ -246,7 +246,7 @@
   </div>
   <p>
     <code>main.py</code> place le panneau directement dans une fenêtre <code>tk.Tk</code>.
-    Une application hôte, comme <code>exemple_application.py</code>, passe plutôt par
+    Une application hôte, comme <code>exemples/03_application_complete.py</code>, passe plutôt par
     <code>AnalysisWindow</code>, qui l'ouvre dans une fenêtre secondaire.
   </p>
 
@@ -368,7 +368,7 @@ self._namespace = {**(context or {}), "__name__": "__main__"}</code></pre>
       <tbody>
         <tr><td><a href="../main.py"><code>main.py</code></a></td><td><span class="tag entry">entrée</span></td>
             <td>Lancer la fenêtre seule.</td><td><code>main()</code></td></tr>
-        <tr><td><a href="../exemple_application.py"><code>exemple_application.py</code></a></td><td><span class="tag entry">entrée</span></td>
+        <tr><td><a href="../exemples/03_application_complete.py"><code>exemples/03_application_complete.py</code></a></td><td><span class="tag entry">entrée</span></td>
             <td>Montrer l'intégration dans une application hôte.</td><td><code>HostApplication</code></td></tr>
         <tr><td><a href="../analyse_app/analysis_window.py"><code>analysis_window.py</code></a></td><td><span class="tag ui">widget</span></td>
             <td>Ouvrir le panneau dans une fenêtre secondaire.</td><td><code>AnalysisWindow(parent, context)</code>, attribut <code>panel</code></td></tr>

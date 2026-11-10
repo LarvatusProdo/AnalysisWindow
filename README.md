@@ -91,24 +91,44 @@ AnalysisWindow(self, session=self.session)
 | Élément | Rôle |
 |---------|------|
 | `session.run(code)` | Exécute le script, l'ajoute à l'historique, retourne un `ExecutionResult`. |
+| `session.run_file(path, encoding="utf-8-sig")` | Idem avec le contenu d'un fichier (`str` ou `Path`). |
 | `result.output`, `result.error`, `result.succeeded` | Sorties, traceback (ou `None`), succès. |
 | `session.history` | Exécutions passées (`HistoryEntry` : `code`, `result`). |
 | `session.namespace` | Variables de la session. |
+
+Pour `run_file`, l'historique affiche `# Fichier : <chemin>` avant le code. Une erreur dans le
+script est renvoyée dans `result.error`, comme pour `run`. En revanche, un fichier introuvable ou
+illisible lève une exception (`OSError`, `UnicodeDecodeError`) et n'est pas ajouté à
+l'historique. Les variables définies par le fichier restent disponibles dans la session.
 
 Si la fenêtre est ouverte pendant un appel à `session.run`, l'historique et les variables se
 mettent à jour immédiatement. Fermer la fenêtre ne perd rien : la session conserve tout.
 `context` et `session` ne peuvent pas être fournis ensemble (`ValueError`).
 
-### Exemple complet
+### Exemples
 
-[exemple_application.py](exemple_application.py) montre une application qui gère une liste
-de mesures, avec un bouton qui ouvre la fenêtre d'analyse. Un second clic ramène la fenêtre au
-premier plan au lieu d'en créer une autre. Le bouton « Calculer la moyenne (sans fenêtre) »
-exécute un script dans la session sans rien afficher ; il apparaît ensuite dans l'historique.
+Le dossier [exemples/](exemples/) rassemble les différentes possibilités. Chaque exemple se lance
+depuis la racine du projet :
+
+| Fichier | Ce qu'il montre |
+|---------|-----------------|
+| [01_panneau_integre.py](exemples/01_panneau_integre.py) | `AnalysisPanel` placé dans un onglet de l'application. |
+| [02_fenetre_secondaire.py](exemples/02_fenetre_secondaire.py) | `AnalysisWindow` ouverte par un bouton, avec une fonction dans `context`. |
+| [03_application_complete.py](exemples/03_application_complete.py) | Application hôte avec une session partagée : script sans fenêtre, exécution d'un fichier choisi, ouverture de l'analyse (un second clic la ramène au premier plan). |
+| [04_sans_interface.py](exemples/04_sans_interface.py) | Exécution de code et de fichiers sans fenêtre, résultats vérifiés dans la console, puis ouverture de la fenêtre sur l'historique (`--sans-fenetre` pour s'en passer). |
 
 ```
-python exemple_application.py
+python exemples/04_sans_interface.py
 ```
+
+Le sous-dossier [exemples/scripts/](exemples/scripts/) contient des fichiers à exécuter avec
+`run_file` ou le bouton « Exécuter un fichier… » :
+
+| Script | Contenu |
+|--------|---------|
+| [hello.py](exemples/scripts/hello.py) | `print("hello")`. |
+| [statistiques.py](exemples/scripts/statistiques.py) | Fonction, import, compréhension de liste et valeur finale, en utilisant `measures` et `add_measure` du contexte. |
+| [erreur.py](exemples/scripts/erreur.py) | Division par zéro, pour voir le traceback dans l'historique. |
 
 ## Fonctionnement
 
@@ -148,7 +168,8 @@ L'architecture est expliquée en détail, avec schémas, dans
 ```
 fenetre_analyse/
 ├── main.py                    # Lancement autonome
-├── exemple_application.py     # Exemple d'application hôte
+├── exemples/                  # Exemples d'utilisation (voir ci-dessus)
+│   └── scripts/               # Fichiers à exécuter avec run_file
 └── analyse_app/
     ├── analysis_window.py     # Fenêtre secondaire (Toplevel)
     ├── analysis_panel.py      # Panneau assemblant les zones

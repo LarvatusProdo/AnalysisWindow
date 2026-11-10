@@ -34,7 +34,7 @@ class AnalysisPanel(ttk.Frame):
         self._session = _resolve_session(context, session)
         self._build_layout()
         for entry in self._session.history:
-            self._history_frame.add_entry(entry.code, entry.result)
+            self._history_frame.add_entry(entry.code, entry.result, entry.source)
         self._refresh_variables()
         self._session.subscribe(self._on_new_entry)
         self.bind("<Destroy>", self._on_destroy, add="+")
@@ -69,7 +69,7 @@ class AnalysisPanel(ttk.Frame):
         Args:
             entry: Nouvelle entrée de l'historique de la session.
         """
-        self._history_frame.add_entry(entry.code, entry.result)
+        self._history_frame.add_entry(entry.code, entry.result, entry.source)
         self._refresh_variables()
 
     def _on_destroy(self, event: tk.Event) -> None:

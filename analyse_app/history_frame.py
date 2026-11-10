@@ -8,6 +8,7 @@ from analyse_app.code_executor import ExecutionResult
 
 CODE_COLOR = "#1f4e9e"
 ERROR_COLOR = "#c62828"
+SOURCE_COLOR = "#6a737d"
 
 
 class HistoryFrame(ttk.LabelFrame):
@@ -24,16 +25,19 @@ class HistoryFrame(ttk.LabelFrame):
                                   font="TkFixedFont")
         self._text.tag_configure("code", foreground=CODE_COLOR)
         self._text.tag_configure("error", foreground=ERROR_COLOR)
+        self._text.tag_configure("source", foreground=SOURCE_COLOR)
         self._text.pack(fill="both", expand=True)
 
-    def add_entry(self, code: str, result: ExecutionResult) -> None:
+    def add_entry(self, code: str, result: ExecutionResult, source: str | None = None) -> None:
         """Ajoute un script et son résultat à la fin de l'historique.
 
         Args:
             code: Code source exécuté.
             result: Résultat de l'exécution.
+            source: Chemin du fichier exécuté, affiché avant le code s'il est fourni.
         """
         self._text.configure(state="normal")
+        self._insert_block(f"# Fichier : {source}" if source else "", "source")
         self._insert_block(_format_code(code), "code")
         self._insert_block(result.output, "output")
         self._insert_block(result.error or "", "error")

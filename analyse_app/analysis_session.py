@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from analyse_app.code_executor import CodeExecutor, ExecutionResult
@@ -14,10 +15,12 @@ class HistoryEntry:
     Attributes:
         code: Code source exécuté.
         result: Résultat de l'exécution.
+        source: Chemin du fichier exécuté, ou None si le code a été fourni directement.
     """
 
     code: str
     result: ExecutionResult
+    source: str | None = None
 
 
 EntryListener = Callable[[HistoryEntry], None]
@@ -60,12 +63,40 @@ class AnalysisSession:
         Returns:
             Les sorties produites et l'éventuelle erreur.
         """
+        return self._record(HistoryEntry(code, self._executor.execute(code)))
+
+    def run_file(self, path: str | Path, encoding: str = "utf-8-sig") -> ExecutionResult:
+        """Exécute le contenu d'un fichier et l'ajoute à l'historique.
+
+        Args:
+            path: Chemin du fichier Python à exécuter.
+            encoding: Encodage du fichier ; la valeur par défaut accepte l'UTF-8
+                avec ou sans BOM.
+
+        Returns:
+            Les sorties produites et l'éventuelle erreur du script.
+
+        Raises:
+            OSError: Si le fichier ne peut pas être lu (introuvable, droits…).
+            UnicodeDecodeError: Si le fichier n'est pas dans l'encodage indiqué.
+        """
+        code = Path(path).read_text(encoding=encoding)
         result = self._executor.execute(code)
-        entry = HistoryEntry(code, result)
+        return self._record(HistoryEntry(code, result, str(path)))
+
+    def _record(self, entry: HistoryEntry) -> ExecutionResult:
+        """Ajoute une entrée à l'historique et prévient les abonnés.
+
+        Args:
+            entry: Exécution à enregistrer.
+
+        Returns:
+            Le résultat de l'exécution enregistrée.
+        """
         self._history.append(entry)
         for listener in list(self._listeners):
             listener(entry)
-        return result
+        return entry.result
 
     def subscribe(self, listener: EntryListener) -> None:
         """Enregistre une fonction appelée après chaque exécution.

@@ -7,9 +7,11 @@ l'application qui l'héberge.
 La fenêtre comporte :
 
 - **un éditeur** pour saisir le code, avec un bouton **▶ Exécuter** ;
-- **un historique** des scripts exécutés et de leurs résultats (code en bleu, erreurs en rouge) ;
+- **un historique** des scripts exécutés et de leurs résultats (code en bleu, erreurs en rouge),
+  avec un bouton **Effacer l'historique** ;
 - **un tableau des variables** (nom, type, valeur), mis à jour après chaque exécution et
-  regroupé par catégorie, avec une couleur par catégorie.
+  regroupé par catégorie, avec une couleur par catégorie, et un bouton **Réinitialiser les
+  variables**.
 
 ## Prérequis
 
@@ -96,6 +98,8 @@ AnalysisWindow(self, session=self.session)
 | `result.output`, `result.error`, `result.succeeded` | Sorties, traceback (ou `None`), succès. |
 | `session.history` | Exécutions passées (`HistoryEntry` : `code`, `result`). |
 | `session.namespace` | Variables de la session. |
+| `session.clear_history()` | Efface l'historique ; les variables sont conservées. |
+| `session.reset_namespace()` | Supprime les variables créées par les scripts et rétablit le contexte initial ; l'historique est conservé. |
 
 Pour `run_file`, l'historique affiche `# Fichier : <chemin>` avant le code. Une erreur dans le
 script est renvoyée dans `result.error`, comme pour `run`. En revanche, un fichier introuvable ou
@@ -140,6 +144,9 @@ Le sous-dossier [exemples/scripts/](exemples/scripts/) contient des fichiers à 
 - **Sorties capturées :** les sorties de `print` (stdout et stderr) s'affichent dans l'historique.
 - **Erreurs sans fermeture :** une erreur, y compris `SyntaxError` ou `sys.exit()`, affiche le
   traceback mais ne ferme pas l'application.
+- **Effacer et réinitialiser :** les boutons demandent une confirmation. « Réinitialiser les
+  variables » remet le contexte initial tel quel, mais n'annule pas ce que les scripts ont fait
+  aux objets de l'application : après `add_measure(5)`, `measures` contient toujours `5`.
 - **Défilement horizontal :** l'historique, l'éditeur et le tableau des variables ont chacun une
   barre horizontale. Les lignes longues ne sont pas renvoyées à la ligne, y compris dans
   l'historique. La colonne Valeur est toujours assez large pour afficher la valeur la plus longue.

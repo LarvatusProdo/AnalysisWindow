@@ -1,6 +1,7 @@
 """Historique des scripts exécutés et de leurs résultats."""
 
 import tkinter as tk
+from collections.abc import Callable
 from tkinter import ttk
 
 from analyse_app.code_executor import ExecutionResult
@@ -14,19 +15,30 @@ SOURCE_COLOR = "#6a737d"
 class HistoryFrame(ttk.LabelFrame):
     """Affichage en lecture seule des exécutions successives."""
 
-    def __init__(self, parent: tk.Misc) -> None:
-        """Construit la zone d'historique.
+    def __init__(self, parent: tk.Misc, on_clear: Callable[[], None]) -> None:
+        """Construit la zone d'historique et son bouton d'effacement.
 
         Args:
             parent: Widget parent.
+            on_clear: Fonction appelée lors d'un clic sur « Effacer l'historique ».
         """
         super().__init__(parent, text="Historique", padding=4)
-        self._text = tk.Text(self, height=15, wrap="none", state="disabled",
+        text_container = ttk.Frame(self)
+        text_container.pack(fill="both", expand=True)
+        self._text = tk.Text(text_container, height=15, wrap="none", state="disabled",
                              font="TkFixedFont")
         self._text.tag_configure("code", foreground=CODE_COLOR)
         self._text.tag_configure("error", foreground=ERROR_COLOR)
         self._text.tag_configure("source", foreground=SOURCE_COLOR)
-        attach_scrollbars(self, self._text)
+        attach_scrollbars(text_container, self._text)
+        ttk.Button(self, text="Effacer l'historique", command=on_clear).pack(anchor="e",
+                                                                           pady=(4, 0))
+
+    def clear(self) -> None:
+        """Vide l'affichage de l'historique."""
+        self._text.configure(state="normal")
+        self._text.delete("1.0", "end")
+        self._text.configure(state="disabled")
 
     def add_entry(self, code: str, result: ExecutionResult, source: str | None = None) -> None:
         """Ajoute un script et son résultat à la fin de l'historique.

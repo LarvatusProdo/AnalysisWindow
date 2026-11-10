@@ -40,12 +40,25 @@ class CodeExecutor:
         Args:
             context: Objets à rendre accessibles aux scripts, indexés par leur nom.
         """
-        self._namespace: dict[str, Any] = {**(context or {}), "__name__": "__main__"}
+        self._context: dict[str, Any] = dict(context or {})
+        self._namespace: dict[str, Any] = {}
+        self.reset()
 
     @property
     def namespace(self) -> dict[str, Any]:
         """Retourne l'espace de noms contenant les variables de l'utilisateur."""
         return self._namespace
+
+    def reset(self) -> None:
+        """Supprime les variables créées par les scripts et rétablit le contexte initial.
+
+        Le dictionnaire est modifié sur place : les références à `namespace` restent valides.
+        Les objets du contexte sont remis tels quels ; leurs modifications internes (par
+        exemple des éléments ajoutés à une liste de l'application) sont conservées.
+        """
+        self._namespace.clear()
+        self._namespace.update(self._context)
+        self._namespace["__name__"] = "__main__"
 
     def execute(self, code: str) -> ExecutionResult:
         """Exécute un script et capture ses sorties.

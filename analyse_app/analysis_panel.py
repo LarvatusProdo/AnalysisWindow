@@ -2,14 +2,18 @@
 
 import tkinter as tk
 from collections.abc import Mapping
-from tkinter import ttk
+from tkinter import messagebox, ttk
 from typing import Any
 
-from analyse_app.analysis_session import AnalysisSession, HistoryEntry
+from analyse_app.analysis_session import AnalysisSession, EventKind, SessionEvent
 from analyse_app.editor_frame import EditorFrame
 from analyse_app.history_frame import HistoryFrame
 from analyse_app.variable_inspector import inspect_variables
 from analyse_app.variables_frame import VariablesFrame
+
+CLEAR_HISTORY_QUESTION = "Effacer tous les scripts et résultats de l'historique ?"
+RESET_NAMESPACE_QUESTION = ("Supprimer les variables créées par les scripts et revenir "
+                            "au contexte initial ?")
 
 
 class AnalysisPanel(ttk.Frame):
@@ -36,7 +40,7 @@ class AnalysisPanel(ttk.Frame):
         for entry in self._session.history:
             self._history_frame.add_entry(entry.code, entry.result, entry.source)
         self._refresh_variables()
-        self._session.subscribe(self._on_new_entry)
+        self._session.subscribe(self._on_session_event)
         self.bind("<Destroy>", self._on_destroy, add="+")
 
     @property
@@ -49,28 +53,45 @@ class AnalysisPanel(ttk.Frame):
         horizontal_pane = ttk.PanedWindow(self, orient="horizontal")
         horizontal_pane.pack(fill="both", expand=True, padx=6, pady=6)
         left_pane = ttk.PanedWindow(horizontal_pane, orient="vertical")
-        self._history_frame = HistoryFrame(left_pane)
+        self._history_frame = HistoryFrame(left_pane, self._confirm_clear_history)
         self._editor_frame = EditorFrame(left_pane, self._execute_code)
-        self._variables_frame = VariablesFrame(horizontal_pane)
+        self._variables_frame = VariablesFrame(horizontal_pane, self._confirm_reset_namespace)
         left_pane.add(self._history_frame, weight=3)
         left_pane.add(self._editor_frame, weight=2)
         horizontal_pane.add(left_pane, weight=3)
         horizontal_pane.add(self._variables_frame, weight=1)
 
     def _execute_code(self) -> None:
-        """Exécute le code saisi ; l'affichage est mis à jour par `_on_new_entry`."""
+        """Exécute le code saisi ; l'affichage est mis à jour par `_on_session_event`."""
         code = self._editor_frame.get_code()
         if code.strip():
             self._session.run(code)
 
-    def _on_new_entry(self, entry: HistoryEntry) -> None:
-        """Affiche une exécution, qu'elle vienne de l'éditeur ou de l'application.
+    def _confirm_clear_history(self) -> None:
+        """Efface l'historique de la session après confirmation."""
+        if messagebox.askyesno("Effacer l'historique", CLEAR_HISTORY_QUESTION, parent=self):
+            self._session.clear_history()
+
+    def _confirm_reset_namespace(self) -> None:
+        """Rétablit le contexte initial de la session après confirmation."""
+        if messagebox.askyesno("Réinitialiser les variables", RESET_NAMESPACE_QUESTION,
+                               parent=self):
+            self._session.reset_namespace()
+
+    def _on_session_event(self, event: SessionEvent) -> None:
+        """Met à jour l'affichage, que la modification vienne du panneau ou de l'application.
 
         Args:
-            entry: Nouvelle entrée de l'historique de la session.
+            event: Modification de la session.
         """
-        self._history_frame.add_entry(entry.code, entry.result, entry.source)
-        self._refresh_variables()
+        if event.kind is EventKind.ENTRY_ADDED and event.entry is not None:
+            entry = event.entry
+            self._history_frame.add_entry(entry.code, entry.result, entry.source)
+            self._refresh_variables()
+        elif event.kind is EventKind.HISTORY_CLEARED:
+            self._history_frame.clear()
+        elif event.kind is EventKind.NAMESPACE_RESET:
+            self._refresh_variables()
 
     def _on_destroy(self, event: tk.Event) -> None:
         """Cesse de suivre la session lorsque le panneau est détruit.
@@ -79,7 +100,7 @@ class AnalysisPanel(ttk.Frame):
             event: Événement de destruction, propagé aussi par les widgets enfants.
         """
         if event.widget is self:
-            self._session.unsubscribe(self._on_new_entry)
+            self._session.unsubscribe(self._on_session_event)
 
     def _refresh_variables(self) -> None:
         """Met à jour l'affichage des variables."""

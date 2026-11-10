@@ -1,6 +1,7 @@
 """Affichage des variables de l'utilisateur, regroupées par catégorie."""
 
 import tkinter as tk
+from collections.abc import Callable
 from tkinter import font, ttk
 
 from analyse_app.scrollbars import attach_scrollbars
@@ -24,18 +25,23 @@ HEADER_SUFFIX = "_header"
 class VariablesFrame(ttk.LabelFrame):
     """Arborescence des variables : un groupe coloré par catégorie."""
 
-    def __init__(self, parent: tk.Misc) -> None:
-        """Construit le Treeview et sa barre de défilement.
+    def __init__(self, parent: tk.Misc, on_reset: Callable[[], None]) -> None:
+        """Construit le Treeview, ses barres de défilement et le bouton de réinitialisation.
 
         Args:
             parent: Widget parent.
+            on_reset: Fonction appelée lors d'un clic sur « Réinitialiser les variables ».
         """
         super().__init__(parent, text="Variables", padding=4)
-        self._tree = ttk.Treeview(self, columns=[name for name, _, _ in COLUMNS],
+        tree_container = ttk.Frame(self)
+        tree_container.pack(fill="both", expand=True)
+        self._tree = ttk.Treeview(tree_container, columns=[name for name, _, _ in COLUMNS],
                                   show="tree headings")
         self._configure_columns()
         self._configure_colors()
-        attach_scrollbars(self, self._tree)
+        attach_scrollbars(tree_container, self._tree)
+        ttk.Button(self, text="Réinitialiser les variables", command=on_reset).pack(
+            anchor="e", pady=(4, 0))
 
     def _configure_columns(self) -> None:
         """Définit les en-têtes et largeurs ; la colonne de l'arbre porte le nom.
